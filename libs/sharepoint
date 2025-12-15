@@ -1,0 +1,110 @@
+#Instalar bibliotecas necessárias
+%pip install openpyxl==3.1.2
+%pip install py-topping==0.4.8
+%pip install office365-rest-python-client==2.5.1
+
+#Reiniciar python, para funcionar bibliotecas recém instaladas
+dbutils.library.restartPython()
+
+# Importações necessárias
+import io
+import pandas as pd
+from office365.runtime.auth.authentication_context import AuthenticationContext
+from office365.sharepoint.client_context import ClientContext
+from office365.sharepoint.files.file import File
+import urllib.parse
+
+class SharePointDownloader:
+    def __init__(self, client_id, client_secret, site_url):
+        """
+        Inicializa a conexão com o SharePoint.
+        :param client_id: ID do cliente do Azure
+        :param client_secret: Segredo do cliente do Azure
+        :param site_url: URL do site no SharePoint
+        """
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.site_url = site_url
+        self.ctx_auth = AuthenticationContext(self.site_url)
+
+    def authenticate(self):
+        """
+        Autentica a aplicação com o SharePoint usando as credenciais fornecidas.
+        :return: Contexto de cliente autenticado ou None em caso de falha
+        """
+        if self.ctx_auth.acquire_token_for_app(self.client_id, self.client_secret):
+            return ClientContext(self.site_url, self.ctx_auth)
+        return None
+
+    def download_excel(self, relative_path, sheet_names=None, header=None):
+        """
+        Faz o download de um arquivo Excel do SharePoint e o carrega como um ou mais DataFrames do Pandas.
+        :param relative_path: Caminho relativo do arquivo no SharePoint
+        :param sheet_names: Nome(s) da(s) planilha(s) dentro do arquivo Excel (pode ser string ou lista de strings)
+        :param header: Linha de cabeçalho a ser utilizada (opcional)
+        :return: Um único DataFrame (se uma planilha for passada) ou um dicionário de DataFrames (se várias planilhas forem passadas)
+        """
+        ctx = self.authenticate()
+        if ctx:
+            try:
+                response = File.open_binary(ctx, relative_path)
+
+                # Salvar os dados em um objeto BytesIO
+                bytes_file_obj = io.BytesIO()
+                bytes_file_obj.write(response.content)
+                bytes_file_obj.seek(0)
+
+                return pd.read_excel(bytes_file_obj, engine='openpyxl', sheet_name=sheet_names, header=header)
+
+                # Se sheet_names for uma string, retornar um único DataFrame
+                if isinstance(sheet_names, str):
+                    return pd.read_excel(bytes_file_obj, engine='openpyxl', sheet_name=sheet_names, header=header)
+
+                # Se sheet_names for uma lista de strings, retornar um dicionário de DataFrames
+                elif isinstance(sheet_names, list):
+                    dfs = pd.read_excel(bytes_file_obj, engine='openpyxl', sheet_name=sheet_names, header=header)
+                    return dfs  # Retorna um dicionário {sheet_name: DataFrame}
+
+                else:
+                    raise 
+            except Exception:
+                raise
+        else:
+            raise
+
+    def download_many_excel(self, relative_folder_path, except_files=[],header=None):
+        
+        ctx = self.authenticate()
+        files = ctx.web.get_folder_by_server_relative_url(relative_folder_path).files
+        ctx.load(files).execute_query()
+        file_list = {}
+        for file in files:
+            if file.name not in except_files:
+                file_list[file.name] = self.download_excel(file.serverRelativeUrl,header=header)
+        return file_list
+
+# Exemplo de utilização:
+
+client_id = dbutils.secrets.get(scope='seuscopeaqui', key='suachaveaqui')
+client_secret = dbutils.secrets.get(scope='seuscopeaqui', key='suachaveaqui')
+site_url = 'https://suaurlaqui.com/sites/suapastaaqui'
+relative_path = '/sites/suapastaaqui/seuprojetoaqui/seuarquivoaqui.xlsx'
+
+# Inicializar a classe
+sp_downloader = SharePointDownloader(client_id, client_secret, site_url)
+
+# Exemplo 1: Baixar uma única planilha 
+df_single_sheet = sp_downloader.download_excel(relative_path, sheet_names='CT PAGAR')
+
+# Exemplo 2: Baixar uma única planilha pulando 5 linhas do cabeçalho
+df_single_sheet = sp_downloader.download_excel(relative_path, sheet_names='CT PAGAR',header=5)
+
+# Exemplo 3: Baixar várias planilhas de uma vez
+sheet_names = ['CT PAGAR', 'CT RECEBER', 'BALANÇO']
+dfs_multi_sheet = sp_downloader.download_excel(relative_path, sheet_names=sheet_names)
+
+# Acessar os DataFrames retornados para cada planilha
+df_ct_pagar = dfs_multi_sheet['CT PAGAR']
+df_ct_receber = dfs_multi_sheet['CT RECEBER']
+df_balanco = dfs_multi_sheet['BALANÇO']
+

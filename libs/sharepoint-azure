@@ -88,7 +88,7 @@ class SharePointDownloader:
 client_id = dbutils.secrets.get(scope='seuscopeaqui', key='suachaveaqui')
 client_secret = dbutils.secrets.get(scope='seuscopeaqui', key='suachaveaqui')
 site_url = 'https://suaurlaqui.com/sites/suapastaaqui'
-relative_path = '/sites/suapastaaqui/seuprojetoaqui/seuarquivoaqui.xlsx'
+relative_path = '/sites/suapastaareaaqui/suapastaprojetoaqui/seuarquivoaqui.xlsx'
 
 # Inicializar a classe
 sp_downloader = SharePointDownloader(client_id, client_secret, site_url)

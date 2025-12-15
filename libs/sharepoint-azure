@@ -1,6 +1,6 @@
 #Instalar bibliotecas necessárias
-%pip install py-topping
 %pip install office365-rest-python-client
+%pip install pandas
 
 #Reiniciar python, para funcionar bibliotecas recém instaladas
 dbutils.library.restartPython()

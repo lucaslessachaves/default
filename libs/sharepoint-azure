@@ -3,7 +3,7 @@
 %pip install pandas -- Databricks já vem instalado normalmente
 
 #Reiniciar python, para funcionar bibliotecas recém instaladas
-dbutils.library.restartPython()
+dbutils.library.restartPython() -- Se estiver usando o databricks
 
 # Importações necessárias
 import io

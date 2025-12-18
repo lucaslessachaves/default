@@ -1,0 +1,101 @@
+#Instalar bibliotecas necessárias
+%pip install gspread oauth2client pandas
+
+#Reiniciar python, para funcionar bibliotecas recém instaladas
+dbutils.library.restartPython()
+
+#Importando bibliotecas
+import json
+import pandas as pd
+from oauth2client.service_account import ServiceAccountCredentials
+import gspread
+
+#Criando função
+def ReadGoogleSheets(site_url: str, worksheet_names: str = None, worksheet_index: int = 0, header=None) -> pd.DataFrame:
+    """
+    Lê uma planilha do Google Sheets com controle de cabeçalho.
+
+    Args:
+        site_url (str): URL da planilha Google.
+        worksheet_names (str or list): Nome da aba ou lista de nomes das abas (opcional).
+        worksheet_index (int): Índice da aba (default: 0).
+        header (int or None): Linha usada como cabeçalho (0-based). Se None, não usa cabeçalho.
+
+    Returns:
+        pd.DataFrame or dict: DataFrame único (se uma aba) ou dicionário de DataFrames (se múltiplas abas).
+    """
+
+    # Caminho do arquivo JSON no DBFS
+    json_path = "dbfs:/FileStore/credencials/credencials_api_google_sheets.json"
+
+    # Escopos da API Google
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
+
+    # Ler conteúdo do JSON via dbutils
+    json_str = dbutils.fs.head(json_path, 10000)
+    credentials_info = json.loads(json_str)
+
+    # Criar credenciais
+    credentials = ServiceAccountCredentials.from_json_keyfile_dict(credentials_info, scope)
+
+    # Autenticar com gspread
+    client = gspread.authorize(credentials)
+
+    # Abrir planilha
+    spreadsheet = client.open_by_url(site_url)
+
+    # Função auxiliar para converter valores em DataFrame
+    def _to_dataframe(values):
+        if header is None:
+            return pd.DataFrame(values)
+        else:
+            headers = values[header]
+            data = values[header + 1:]
+            return pd.DataFrame(data, columns=headers)
+
+    # Se múltiplas abas (list), retorna dict
+    if worksheet_names is not None and isinstance(worksheet_names, list):
+        result = {}
+        for name in worksheet_names:
+            values = spreadsheet.worksheet(name).get_all_values()
+            result[name] = _to_dataframe(values)
+        return result
+
+    # Se uma única aba (str)
+    elif worksheet_names is not None and isinstance(worksheet_names, str):
+        values = spreadsheet.worksheet(worksheet_names).get_all_values()
+        return _to_dataframe(values)
+
+    # Se nenhuma aba passada, usar índice
+    else:
+        worksheet = spreadsheet.get_worksheet(worksheet_index)
+        values = worksheet.get_all_values()
+        return _to_dataframe(values)
+
+
+# Exemplo de utilização
+# Parâmetros do Google SHeets
+url = "https://docs.google.com/spreadsheets/d/1KHe5fNlBykIfi8sgJdpsllIpXHgYQFosjxrDZGR_FsM/edit?gid=2055807372#gid=2055807372"
+
+# Inicializar a extração 
+
+# Exemplo 1: Baixar uma única planilha
+df = ReadGoogleSheets(site_url=url, worksheet_names='Particular', header=0)
+
+# Exemplo 2: Baixar uma única planilha pulando 5 linhas do cabeçalho
+df = ReadGoogleSheets(site_url=url, worksheet_names='Particular', header=5)
+
+# Exemplo 3: Baixar várias planilhas de uma vez
+sheet_names = ['Particular', 'Publico']
+df = ReadGoogleSheets(site_url=url, worksheet_names=sheet_names, header=0)
+
+# Acessar os DataFrames retornados para cada planilha
+df_Particular = df['Particular']
+df_Publico = df['Publico']
+
+# Exemplo 4: Baixar TODAS as planilhas de uma vez
+df = ReadGoogleSheets(site_url=url, header=0)
+

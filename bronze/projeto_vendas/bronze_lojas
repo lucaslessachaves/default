@@ -1,0 +1,16 @@
+%run /Workspace/home/lib/lib_gerar_tabelas_fake
+
+lojas = []
+
+for i in range(1, n_lojas+1):
+    lojas.append({
+        "id_loja": i,
+        "nome_loja": f"Loja {fake.city()}",
+        "cidade": fake.city(),
+        "estado": fake.estado_sigla(),
+        "data_abertura": fake.date_between(start_date='-10y', end_date='-1y'),
+        "gerente": fake.name()
+    })
+
+df_lojas = spark.createDataFrame(lojas)    
+df_lojas.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable("workspace.bronze.lojas")

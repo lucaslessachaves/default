@@ -1,0 +1,16 @@
+%run /Workspace/home/lib/lib_gerar_tabelas_fake
+
+metas = []
+
+for vendedor in range(1, n_vendedores+1):
+    for mes in range(1,13):
+
+        metas.append({
+            "id_vendedor": vendedor,
+            "ano": 2025,
+            "mes": mes,
+            "meta_valor": random.randint(50000,150000)
+        })
+
+df_metas = spark.createDataFrame(metas)    
+df_metas.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable("workspace.bronze.metas")

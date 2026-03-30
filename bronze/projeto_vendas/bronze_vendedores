@@ -1,0 +1,16 @@
+%run /Workspace/home/lib/lib_gerar_tabelas_fake
+
+vendedores = []
+
+for i in range(1, n_vendedores+1):
+    vendedores.append({
+        "id_vendedor": i,
+        "nome_vendedor": fake.name(),
+        "email": fake.email(),
+        "telefone": fake.phone_number(),
+        "data_contratacao": fake.date_between(start_date='-5y', end_date='today'),
+        "id_loja": random.randint(1, n_lojas)
+    })
+
+df_vendedores = spark.createDataFrame(vendedores)    
+df_vendedores.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable("workspace.bronze.vendedores")

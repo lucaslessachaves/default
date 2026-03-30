@@ -1,0 +1,15 @@
+%pip install faker
+
+from faker import Faker
+import pandas as pd
+import random
+from datetime import datetime
+
+fake = Faker('pt_BR')
+
+# volumes
+n_clientes = 5000
+n_vendedores = 75
+n_lojas = 10
+n_vendas = 100000
+n_produtos = 200
